@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Size Comparison Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #e6f3ff 0%, #cce7ff 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #map-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(to bottom, #e6f3ff 0%, #cce7ff 100%);
+        }
+
+        .overlay-panel {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .header-panel {
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header-panel h1 {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-panel .instructions {
+            color: #666;
+            font-size: 1em;
+            line-height: 1.4;
+            margin-bottom: 15px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .legend {
+            position: absolute;
+            top: 140px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+            line-height: 1.6;
+            z-index: 1000;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 16px;
+            color: #333;
+            z-index: 1000;
+        }
+
+        .country {
+            fill: #90ee90;
+            stroke: #228b22;
+            stroke-width: 0.5;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .country:hover {
+            fill: #98fb98;
+            stroke: #32cd32;
+            stroke-width: 1;
+        }
+
+        .country.selected {
+            fill: #ff6b6b !important;
+            stroke: #ff1744 !important;
+            stroke-width: 2 !important;
+            filter: drop-shadow(0 4px 8px rgba(255, 107, 107, 0.6));
+        }
+
+        .country.dragging {
+            fill: #ff8a80 !important;
+            stroke: #ff1744 !important;
+            stroke-width: 2 !important;
+            filter: drop-shadow(0 6px 12px rgba(255, 107, 107, 0.8));
+            z-index: 1000;
+        }
+
+        .graticule {
+            fill: none;
+            stroke: #ddd;
+            stroke-width: 0.5;
+            opacity: 0.3;
+        }
+
+        .sphere {
+            fill: #e6f3ff;
+            stroke: #000;
+            stroke-width: 1;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 24px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 250px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 1000;
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .header-panel {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 15px;
+            }
+
+            .header-panel h1 {
+                font-size: 1.8em;
+            }
+
+            .controls {
+                gap: 10px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+
+            .legend {
+                top: 120px;
+                right: 10px;
+                font-size: 12px;
+                padding: 12px;
+            }
+
+            .status-panel {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            .zoom-controls {
+                top: 200px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map-container">
+        <div class="overlay-panel header-panel">
+            <h1>🌍 World Size Comparison</h1>
+            <div class="instructions">
+                Click on any country to select it, then drag it anywhere on the map to compare sizes!
+            </div>
+            <div class="controls">
+                <button onclick="resetMap()" id="resetBtn">🔄 Reset All</button>
+                <button onclick="clearSelection()" id="clearBtn">❌ Clear Selection</button>
+                <button onclick="randomComparison()" id="randomBtn">🎲 Random Comparison</button>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #90ee90; border-color: #228b22;"></div>
+                <span>Available Countries</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff6b6b; border-color: #ff1744;"></div>
+                <span>Selected & Moveable</span>
+            </div>
+        </div>
+
+        <div class="zoom-controls">
+            <div class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</div>
+            <div class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</div>
+            <div class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">⌂</div>
+        </div>
+
+        <div class="loading" id="loading">Loading world map data...</div>
+        <div class="tooltip" id="tooltip"></div>
+
+        <div class="overlay-panel status-panel" id="status">
+            Loading map...
+        </div>
+    </div>
+
+    <script>
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let svg, projection, path, worldData;
+        let zoom = d3.zoom();
+
+        let selectedCountries = [];
+        let draggedCountries = new Map();
+        let isDragging = false;
+        let currentDragElement = null;
+
+        const tooltip = d3.select("#tooltip");
+
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+
+            if (svg) {
+                svg.attr("width", width).attr("height", height);
+                projection.scale(Math.min(width, height) / 6).translate([width / 2, height / 2]);
+                if (svg.select('.map-group').node()) {
+                    svg.select('.map-group').selectAll("path").attr("d", path);
+                }
+            }
+        });
+
+        async function initializeMap() {
+            try {
+                const response = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+                const world = await response.json();
+
+                worldData = topojson.feature(world, world.objects.countries);
+
+                document.getElementById('loading').style.display = 'none';
+
+                svg = d3.select("#map-container")
+                    .append("svg")
+                    .attr("width", width)
+                    .attr("height", height);
+
+                projection = d3.geoNaturalEarth1()
+                    .scale(Math.min(width, height) / 6)
+                    .translate([width / 2, height / 2]);
+
+                path = d3.geoPath().projection(projection);
+
+                const mapGroup = svg.append("g")
+                    .attr("class", "map-group");
+
+                zoom = d3.zoom()
+                    .scaleExtent([1, 20])
+                    .on("zoom", function (event) {
+                        mapGroup.attr("transform", event.transform);
+                    });
+
+                svg.call(zoom);
+
+                const graticule = d3.geoGraticule();
+                mapGroup.append("path")
+                    .datum(graticule)
+                    .attr("class", "graticule")
+                    .attr("d", path);
+
+                const countries = mapGroup.selectAll("path.country")
+                    .data(worldData.features)
+                    .enter()
+                    .append("path")
+                    .attr("class", "country")
+                    .attr("d", path)
+                    .attr("data-name", d => d.properties.NAME || d.properties.name || "Unknown")
+                    .style("transform-origin", d => {
+                        const centroid = path.centroid(d);
+                        return `${centroid[0]}px ${centroid[1]}px`;
+                    })
+                    .on("mouseover", function (event, d) {
+                        if (!d3.select(this).classed("selected")) {
+                            d3.select(this).style("fill", "#98fb98");
+                        }
+                        const countryName = d.properties.NAME || d.properties.name || "Unknown";
+                        tooltip
+                            .style("opacity", 1)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 10) + "px")
+                            .text(countryName);
+                    })
+                    .on("mouseout", function (event, d) {
+                        if (!d3.select(this).classed("selected")) {
+                            d3.select(this).style("fill", "#90ee90");
+                        }
+                        tooltip.style("opacity", 0);
+                    })
+                    .on("click", function (event, d) {
+                        event.stopPropagation();
+                        selectCountry(this, d);
+                    });
+
+                const drag = d3.drag()
+                    .on("start", function (event, d) {
+                        if (!d3.select(this).classed("selected")) return;
+
+                        isDragging = true;
+                        currentDragElement = this;
+                        d3.select(this).classed("dragging", true);
+                        tooltip.style("opacity", 0);
+
+                        svg.on('.zoom', null);
+                    })
+                    .on("drag", function (event, d) {
+                        if (!d3.select(this).classed("selected")) return;
+
+                        const currentTransform = d3.zoomTransform(svg.node());
+
+                        const [x, y] = d3.pointer(event, mapGroup.node());
+                        const centroid = path.centroid(d);
+                        const dx = x - centroid[0];
+                        const dy = y - centroid[1];
+
+                        d3.select(this).attr("transform", `translate(${dx}, ${dy})`);
+
+                        const countryName = d.properties.NAME || d.properties.name || "Unknown";
+                        draggedCountries.set(countryName, { dx, dy });
+                    })
+                    .on("end", function (event, d) {
+                        if (!d3.select(this).classed("selected")) return;
+
+                        isDragging = false;
+                        d3.select(this).classed("dragging", false);
+                        const countryName = d.properties.NAME || d.properties.name || "Unknown";
+                        updateStatus(`${countryName} moved! Click another country to compare sizes.`);
+                        currentDragElement = null;
+
+                        svg.call(zoom);
+                    });
+
+                countries.call(drag);
+
+                updateStatus("Click on a country to start comparing sizes!");
+
+                document.getElementById('resetBtn').disabled = false;
+                document.getElementById('clearBtn').disabled = false;
+                document.getElementById('randomBtn').disabled = false;
+
+            } catch (error) {
+                console.error('Error loading map data:', error);
+                document.getElementById('loading').innerHTML = 'Error loading map data. Using simplified version...';
+
+                createFallbackMap();
+            }
+        }
+
+        function zoomIn() {
+            svg.transition().duration(300).call(
+                zoom.scaleBy, 1.5
+            );
+        }
+
+        function zoomOut() {
+            svg.transition().duration(300).call(
+                zoom.scaleBy, 1 / 1.5
+            );
+        }
+
+        function resetZoom() {
+            svg.transition().duration(500).call(
+                zoom.transform,
+                d3.zoomIdentity
+            );
+        }
+
+        function createFallbackMap() {
+            svg = d3.select("#map-container")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            const fallbackCountries = [
+                { name: "United States", x: width * 0.15, y: height * 0.35, width: width * 0.22, height: height * 0.15 },
+                { name: "Canada", x: width * 0.12, y: height * 0.18, width: width * 0.28, height: height * 0.12 },
+                { name: "Brazil", x: width * 0.25, y: height * 0.58, width: width * 0.15, height: height * 0.18 },
+                { name: "Russia", x: width * 0.45, y: height * 0.22, width: width * 0.26, height: height * 0.14 },
+                { name: "China", x: width * 0.60, y: height * 0.35, width: width * 0.15, height: height * 0.15 },
+                { name: "Australia", x: width * 0.67, y: height * 0.75, width: width * 0.13, height: height * 0.10 },
+                { name: "India", x: width * 0.56, y: height * 0.47, width: width * 0.09, height: height * 0.12 },
+                { name: "Argentina", x: width * 0.22, y: height * 0.80, width: width * 0.07, height: height * 0.12 },
+                { name: "Greenland", x: width * 0.28, y: height * 0.15, width: width * 0.09, height: height * 0.16 }
+            ];
+
+            fallbackCountries.forEach(country => {
+                svg.append("rect")
+                    .attr("x", country.x)
+                    .attr("y", country.y)
+                    .attr("width", country.width)
+                    .attr("height", country.height)
+                    .attr("rx", 5)
+                    .attr("class", "country")
+                    .attr("data-name", country.name)
+                    .style("transform-origin", `${country.x + country.width / 2}px ${country.y + country.height / 2}px`)
+                    .on("mouseover", function (event) {
+                        if (!d3.select(this).classed("selected")) {
+                            d3.select(this).style("fill", "#98fb98");
+                        }
+                        tooltip
+                            .style("opacity", 1)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 10) + "px")
+                            .text(country.name);
+                    })
+                    .on("mouseout", function () {
+                        if (!d3.select(this).classed("selected")) {
+                            d3.select(this).style("fill", "#90ee90");
+                        }
+                        tooltip.style("opacity", 0);
+                    })
+                    .on("click", function (event) {
+                        event.stopPropagation();
+                        selectCountryFallback(this, country);
+                    });
+            });
+
+            updateStatus("Click on a country to start comparing sizes!");
+
+            document.getElementById('resetBtn').disabled = false;
+            document.getElementById('clearBtn').disabled = false;
+            document.getElementById('randomBtn').disabled = false;
+        }
+
+        function selectCountry(element, data) {
+            const country = d3.select(element);
+            const isSelected = country.classed("selected");
+            const countryName = data.properties.NAME || data.properties.name || "Unknown";
+
+            if (isSelected) {
+                country.classed("selected", false);
+                selectedCountries = selectedCountries.filter(c => c !== countryName);
+                updateStatus(selectedCountries.length > 0 ?
+                    `${selectedCountries.join(", ")} selected. Click and drag to move them around!` :
+                    "Click on a country to start comparing sizes!");
+            } else {
+                country.classed("selected", true);
+                selectedCountries.push(countryName);
+                updateStatus(`${countryName} selected! Drag it around to compare with other regions.`);
+            }
+        }
+
+        function selectCountryFallback(element, country) {
+            const countryElement = d3.select(element);
+            const isSelected = countryElement.classed("selected");
+
+            if (isSelected) {
+                countryElement.classed("selected", false);
+                selectedCountries = selectedCountries.filter(c => c !== country.name);
+                updateStatus(selectedCountries.length > 0 ?
+                    `${selectedCountries.join(", ")} selected. Click and drag to move them around!` :
+                    "Click on a country to start comparing sizes!");
+            } else {
+                countryElement.classed("selected", true);
+                selectedCountries.push(country.name);
+                updateStatus(`${country.name} selected! Drag it around to compare with other regions.`);
+            }
+        }
+
+        function updateStatus(message) {
+            document.getElementById("status").textContent = message;
+        }
+
+        function resetMap() {
+            if (!svg) return;
+
+            const mapGroup = svg.select('.map-group');
+            if (mapGroup.node()) {
+                mapGroup.selectAll(".country")
+                    .classed("selected", false)
+                    .classed("dragging", false)
+                    .attr("transform", null);
+            }
+
+            selectedCountries = [];
+            draggedCountries.clear();
+            resetZoom();
+            updateStatus("Map reset! Click on a country to start comparing sizes.");
+        }
+
+        function clearSelection() {
+            if (!svg) return;
+
+            const mapGroup = svg.select('.map-group');
+            if (mapGroup.node()) {
+                mapGroup.selectAll(".country")
+                    .classed("selected", false);
+            }
+
+            selectedCountries = [];
+            updateStatus("Selection cleared! Click on a country to start comparing sizes.");
+        }
+
+        function randomComparison() {
+            if (!svg) return;
+
+            resetMap();
+
+            const mapGroup = svg.select('.map-group');
+            const countryElements = mapGroup.selectAll(".country").nodes();
+            if (countryElements.length === 0) return;
+
+            const randomCount = Math.floor(Math.random() * 2) + 2;
+            const selectedElements = [];
+
+            while (selectedElements.length < randomCount && selectedElements.length < countryElements.length) {
+                const randomIndex = Math.floor(Math.random() * countryElements.length);
+                const element = countryElements[randomIndex];
+                if (!selectedElements.includes(element)) {
+                    selectedElements.push(element);
+                }
+            }
+
+            selectedElements.forEach(element => {
+                const countryName = element.getAttribute('data-name');
+                d3.select(element).classed("selected", true);
+                selectedCountries.push(countryName);
+            });
+
+            updateStatus(`Random comparison ready! Try dragging ${selectedCountries.join(" and ")} around the map.`);
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'r' || event.key === 'R') {
+                resetMap();
+            } else if (event.key === 'c' || event.key === 'C') {
+                clearSelection();
+            } else if (event.key === ' ') {
+                event.preventDefault();
+                randomComparison();
+            } else if (event.key === '+' || event.key === '=') {
+                zoomIn();
+            } else if (event.key === '-') {
+                zoomOut();
+            } else if (event.key === '0') {
+                resetZoom();
+            }
+        });
+
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js';
+        script.onload = initializeMap;
+        script.onerror = createFallbackMap;
+        document.head.appendChild(script);
+
+        document.getElementById('resetBtn').disabled = true;
+        document.getElementById('clearBtn').disabled = true;
+        document.getElementById('randomBtn').disabled = true;
+    </script>
+</body>
+
+</html>
