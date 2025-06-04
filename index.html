@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Size Comparison Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <link rel="stylesheet" href="country.css">
+</head>
+<body>
+    <div id="map-container">
+        <div class="overlay-panel header-panel">
+            <h1>🌍 World Size Comparison</h1>
+            <div class="instructions">
+                Click on any country to select it, then drag it anywhere on the map to compare sizes!
+            </div>
+            <div class="controls">
+                <button onclick="resetMap()" id="resetBtn">🔄 Reset All</button>
+                <button onclick="clearSelection()" id="clearBtn">❌ Clear Selection</button>
+                <button onclick="randomComparison()" id="randomBtn">🎲 Select Random Country</button>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #90ee90; border-color: #228b22;"></div>
+                <span>Available Countries</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff6b6b; border-color: #ff1744;"></div>
+                <span>Selected & Moveable</span>
+            </div>
+        </div>
+
+        <div class="zoom-controls">
+            <div class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</div>
+            <div class="zoom-btn" onclick="zoomOut()" title="Zoom Out">-</div>
+            <div class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">⌂</div>
+        </div>
+
+        <div class="loading" id="loading">Loading world map data...</div>
+        <div class="tooltip" id="tooltip"></div>
+
+        <div class="overlay-panel status-panel" id="status">
+            Loading map...
+        </div>
+    </div>
+
+    <script src="country.js"></script>
+</body>
+</html>

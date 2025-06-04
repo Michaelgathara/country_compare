@@ -1,0 +1,339 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to bottom, #e6f3ff 0%, #cce7ff 100%);
+    height: 100vh;
+    overflow: hidden;
+}
+
+#map-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: linear-gradient(to bottom, #e6f3ff 0%, #cce7ff 100%);
+}
+
+.overlay-panel {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    color: black;
+}
+
+.header-panel {
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    padding: 24px 32px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.header-panel h1 {
+    color: black;
+    font-size: 2.4em;
+    margin-bottom: 12px;
+    font-weight: 700;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    letter-spacing: -0.5px;
+}
+
+@keyframes subtle-glow {
+    0% {
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    100% {
+        text-shadow: 0 2px 20px rgba(255, 255, 255, 0.1), 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.header-panel .instructions {
+    color: rgba(0, 0, 0, 0.9);
+    font-size: 1.1em;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+button {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    color: black;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 24px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+button:hover::before {
+    opacity: 1;
+}
+
+button:active {
+    transform: translateY(0);
+    transition: transform 0.1s ease;
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+button:disabled:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+}
+
+.legend {
+    position: absolute;
+    top: 140px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    line-height: 1.6;
+    z-index: 1000;
+    color: black;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 15px;
+    margin-right: 10px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+}
+
+.status-panel {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    font-size: 16px;
+    color: black;
+    font-weight: 500;
+    z-index: 1000;
+}
+
+.country {
+    fill: #90ee90;
+    stroke: #228b22;
+    stroke-width: 0.5;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.country:hover {
+    fill: #98fb98;
+    stroke: #32cd32;
+    stroke-width: 1;
+}
+
+.country.selected {
+    fill: #ff6b6b !important;
+    stroke: #ff1744 !important;
+    stroke-width: 2 !important;
+    filter: drop-shadow(0 4px 8px rgba(255, 107, 107, 0.6));
+}
+
+.country.dragging {
+    fill: #ff8a80 !important;
+    stroke: #ff1744 !important;
+    stroke-width: 3 !important;
+    filter: drop-shadow(0 8px 16px rgba(255, 107, 107, 0.8));
+    z-index: 1000;
+    opacity: 0.9;
+}
+
+.graticule {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 0.5;
+    opacity: 0.4;
+}
+
+.sphere {
+    fill: rgba(255, 255, 255, 0.05);
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 1;
+}
+
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: black;
+    font-size: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 32px 48px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    font-weight: 500;
+}
+
+.zoom-controls {
+    position: absolute;
+    top: 250px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 1000;
+}
+
+.zoom-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    color: black;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+
+@media (max-width: 768px) {
+    .header-panel {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        padding: 20px 24px;
+    }
+
+    .header-panel h1 {
+        font-size: 2em;
+        margin-bottom: 10px;
+    }
+
+    .header-panel .instructions {
+        font-size: 0.95em;
+        margin-bottom: 18px;
+    }
+
+    .controls {
+        gap: 8px;
+    }
+
+    button {
+        padding: 10px 18px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+
+    .legend {
+        top: 140px;
+        right: 10px;
+        font-size: 12px;
+        padding: 12px;
+    }
+
+    .status-panel {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        padding: 14px 20px;
+        font-size: 14px;
+    }
+
+    .zoom-controls {
+        top: 200px;
+        right: 10px;
+    }
+}
